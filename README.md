@@ -7,7 +7,7 @@
 ![Deep Learning](https://img.shields.io/badge/Deep%20Learning-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)
 ![Computer Vision](https://img.shields.io/badge/Computer%20Vision-00A67E?style=for-the-badge)
 
-A comprehensive collection of **computer vision projects** built with OpenCV, demonstrating real-world applications of image processing, object detection, and video analysis.
+A comprehensive collection of **computer vision projects** built with OpenCV, demonstrating real-world applications of image processing, object detection, face recognition, gesture recognition, AR filters, and more.
 
 [View Projects](#-projects) • [Installation](#-installation) • [Documentation](#-documentation) • [Contributing](#-contributing)
 
@@ -18,12 +18,10 @@ A comprehensive collection of **computer vision projects** built with OpenCV, de
 ## 📋 Table of Contents
 
 - [About](#-about)
-- [Project Architecture](#-project-architecture)
 - [Projects](#-projects)
 - [Installation](#-installation)
 - [Usage](#-usage)
 - [Technology Stack](#-technology-stack)
-- [Key Features](#-key-features)
 - [Project Structure](#-project-structure)
 - [Contributing](#-contributing)
 - [License](#-license)
@@ -32,127 +30,212 @@ A comprehensive collection of **computer vision projects** built with OpenCV, de
 
 ## 🎯 About
 
-This repository contains a curated collection of **computer vision projects** designed to build practical skills in image processing, object detection, face recognition, video analysis, and real-time applications. Each project includes:
+This repository contains a curated collection of **21+ computer vision projects** designed to demonstrate practical applications of OpenCV and deep learning. Projects range from basic image processing to advanced AR filters and AI-based systems.
+
+Each project includes:
 
 - ✅ Complete source code
 - ✅ Detailed documentation
 - ✅ Usage examples
 - ✅ Step-by-step guides
-- ✅ Performance metrics
 - ✅ Real-world applications
-
----
-
-## 🏗️ Project Architecture
-
-```mermaid
-graph TB
-    subgraph Input["📥 Input Sources"]
-        A1["Images"]
-        A2["Videos"]
-        A3["Webcam Feed"]
-        A4["Real-time Streams"]
-    end
-    
-    subgraph Processing["⚙️ Processing Pipeline"]
-        B1["Image Preprocessing"]
-        B2["Feature Detection"]
-        B3["Object Detection"]
-        B4["Face Recognition"]
-        B5["Video Analysis"]
-    end
-    
-    subgraph Models["🤖 ML Models"]
-        C1["YOLO"]
-        C2["Haar Cascade"]
-        C3["Contour Detection"]
-        C4["Edge Detection"]
-        C5["CNN Models"]
-    end
-    
-    subgraph Output["📤 Output"]
-        D1["Annotated Images"]
-        D2["Results Report"]
-        D3["Video Output"]
-        D4["Detection Logs"]
-    end
-    
-    Input --> Processing
-    Processing --> Models
-    Models --> Output
-    
-    style Input fill:#e1f5ff
-    style Processing fill:#fff3e0
-    style Models fill:#f3e5f5
-    style Output fill:#e8f5e9
-```
 
 ---
 
 ## 📚 Projects
 
-### 1. 🎯 Object Detection
-**Description:** Real-time object detection using YOLO and SSD models
-- Detect multiple objects in images and videos
-- Real-time processing capabilities
-- Confidence score filtering
-- Bounding box visualization
+### **1. Face Detection + Real-time Recognition**
+Advanced face detection and recognition system using deep learning models with real-time processing capabilities.
 
-**Key Features:**
-- Multiple object detection algorithms
-- Adjustable confidence thresholds
-- Performance optimization
-- Batch processing support
-
-**Usage:**
-```python
-from projects import ObjectDetector
-
-detector = ObjectDetector()
-results = detector.detect(image_path='sample.jpg')
-```
-
----
-
-### 2. 👤 Face Recognition
-**Description:** Face detection and recognition using Haar Cascade and Deep Learning
-- Real-time face detection
-- Face alignment
-- Expression recognition
+**Features:**
+- Real-time face detection in video streams
+- Face alignment and normalization
+- Facial recognition with high accuracy
 - Multi-face tracking
+- Expression and emotion detection
 
-**Key Features:**
-- High accuracy detection
-- Real-time processing
-- Face cropping and extraction
-- Facial landmarks detection
+### **2. Face Mask Detection**
+AI-powered system to detect whether people are wearing masks in images and videos.
 
----
+**Features:**
+- Mask/No-Mask classification
+- Real-time video processing
+- Confidence score visualization
+- Crowd analysis
 
-### 3. 🚗 Vehicle Detection & Tracking
-**Description:** Detect and track vehicles in traffic videos
-- Vehicle classification (cars, trucks, buses)
-- Traffic flow analysis
-- Speed estimation
-- Lane detection
+### **3. AI Virtual Mouse**
+Control your cursor using hand gestures and facial movements.
 
----
+**Features:**
+- Hand gesture recognition
+- Pointer control via hand movement
+- Click/Drag operations using fingers
+- Real-time hand tracking
 
-### 4. 📝 Document Scanner
-**Description:** Scan and digitize documents from images
-- Document boundary detection
-- Perspective correction
-- Text enhancement
-- PDF export
+### **4. Face Recognition Attendance System**
+Automatic attendance marking system using facial recognition.
 
----
+**Features:**
+- Student/Employee database
+- Real-time attendance marking
+- Report generation
+- Timestamp logging
 
-### 5. 🎬 Video Processing & Analysis
-**Description:** Advanced video analysis and manipulation
-- Frame extraction
+### **5. Invisible UI Controller**
+Control UI elements without visible controllers using hand gestures.
+
+**Features:**
+- Gesture-based UI control
+- Virtual button interactions
+- Real-time hand detection
+- Customizable gestures
+
+### **6. Driver Drowsiness & Distraction Detection**
+Safety system to detect driver fatigue and distraction in real-time.
+
+**Features:**
+- Eye closure detection
+- Yawn detection
+- Head pose estimation
+- Alert system for drowsiness
+- Phone usage detection
+
+### **7. YOLO Object Detection**
+Real-time object detection using YOLO (You Only Look Once) architecture.
+
+**Features:**
+- Multi-object detection
+- Real-time processing (30+ FPS)
+- Bounding box visualization
+- Confidence filtering
+- Support for 80+ object classes
+
+### **8. Air Drawing App**
+Create drawings in the air using hand movements detected by your webcam.
+
+**Features:**
+- Gesture-based drawing
+- Color selection
+- Brush size adjustment
+- Real-time canvas
+- Save drawings as images
+
+### **9. Motion-Based Light Control**
+Control lights and devices based on motion detection.
+
+**Features:**
 - Motion detection
-- Video stabilization
-- Scene detection
+- Light intensity estimation
+- Gesture-based control
+- IoT integration ready
+
+### **10. Gesture-Based Manual**
+Use hand gestures to control presentations and applications.
+
+**Features:**
+- Slide navigation gestures
+- Volume control gestures
+- Pause/Play control
+- Custom gesture mapping
+
+### **11. Handwritten Digit Recognition**
+Recognize handwritten digits using neural networks trained on MNIST dataset.
+
+**Features:**
+- Real-time digit recognition
+- Handwriting canvas
+- Accuracy metrics
+- Model training code included
+
+### **12. AR Face Filters**
+Apply Snapchat-like AR filters to faces in real-time.
+
+**Features:**
+- Multiple filter effects (sunglasses, hats, masks)
+- Real-time face detection
+- Smooth filter application
+- Customizable filters
+
+### **13. Emotion-Based Color Detection**
+Detect emotions from faces and generate corresponding colors.
+
+**Features:**
+- 7-emotion classification
+- Color mapping for emotions
+- Real-time emotion display
+- Emotion statistics
+
+### **14. Creative Computer Vision**
+Artistic image transformations and creative effects.
+
+**Features:**
+- Cartoon effect
+- Sketch conversion
+- Color manipulation
+- Artistic filters
+
+### **15. Gesture-Controlled Presentation**
+Control presentations using hand gestures without keyboards.
+
+**Features:**
+- Next/Previous slide gestures
+- Pointer control
+- Zoom functionality
+- Real-time gesture feedback
+
+### **16. AR Try-On System**
+Virtual try-on system for glasses, hats, and accessories.
+
+**Features:**
+- Real-time object placement
+- Accurate face alignment
+- Multiple product catalog
+- Rotation and scaling
+
+### **17. AI Sign Language Translator**
+Translate sign language to text and speech in real-time.
+
+**Features:**
+- Hand pose estimation
+- Gesture recognition
+- Real-time translation
+- Text-to-speech output
+
+### **18. Real-Time Background Removal**
+Remove or replace backgrounds in real-time video streams.
+
+**Features:**
+- Semantic segmentation
+- Custom background replacement
+- Virtual backgrounds
+- Smooth edge blending
+
+### **19. Motion-Driven Generation**
+Generate images or effects based on motion patterns.
+
+**Features:**
+- Motion tracking
+- Dynamic effect generation
+- Frame interpolation
+- Creative visualizations
+
+### **20. AI Attention & Focus Monitor**
+Monitor attention level in meetings and classes.
+
+**Features:**
+- Gaze tracking
+- Head position monitoring
+- Distraction detection
+- Attention reports
+
+### **21. Hand-Controlled 3D Navigation**
+Navigate 3D environments using hand gestures.
+
+**Features:**
+- Hand gesture recognition
+- 3D object rotation
+- Zoom and pan control
+- Real-time tracking
 
 ---
 
@@ -173,7 +256,7 @@ cd Open-CV-Projects
 ```bash
 # Using venv
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate  # On Windows: venv\\Scripts\\activate
 
 # Or using conda
 conda create -n cv-projects python=3.9
@@ -185,8 +268,7 @@ conda activate cv-projects
 pip install -r requirements.txt
 ```
 
-### Requirements File
-Create `requirements.txt`:
+### Requirements
 ```
 opencv-python==4.8.0
 opencv-contrib-python==4.8.0
@@ -196,69 +278,68 @@ scikit-image==0.21.0
 Pillow==10.0.0
 matplotlib==3.7.2
 tensorflow==2.13.0
+torch==2.0.0
+torchvision==0.15.0
 pandas==2.0.3
+medapipe==0.10.0
 ```
 
 ---
 
 ## 💻 Usage
 
-### Basic Usage Example
+### Running Individual Projects
+
+Each project can be run independently:
+
+```bash
+# Example: Running Face Detection
+cd "Project 1-- Face Detection + Rea"
+python face_detection.py
+
+# Example: Running YOLO Object Detection
+cd "Project 7--Object_Detection_YO"
+python object_detection.py
+```
+
+### Example Code
 
 ```python
 import cv2
-from open_cv_projects import ObjectDetector, FaceRecognition
 
-# Object Detection
-detector = ObjectDetector(model='yolo')
-image = cv2.imread('sample.jpg')
-results = detector.detect(image)
-detector.visualize(image, results)
+# Load video
+cap = cv2.VideoCapture(0)  # Webcam
 
-# Face Recognition
-face_recognizer = FaceRecognition()
-faces = face_recognizer.detect(image)
-for face in faces:
-    print(f"Face detected at: {face['coordinates']}")
+while True:
+    ret, frame = cap.read()
+    
+    if not ret:
+        break
+    
+    # Process frame (add your project logic here)
+    processed = frame  # Your processing
+    
+    cv2.imshow('Output', processed)
+    
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
 ```
 
 ---
 
 ## 📊 Technology Stack
 
-```mermaid
-graph LR
-    A["🐍 Python 3.9+"] --> B["Libraries"]
-    B --> C["OpenCV"]
-    B --> D["NumPy"]
-    B --> E["Pandas"]
-    B --> F["TensorFlow/PyTorch"]
-    C --> G["Image Processing"]
-    C --> H["Video Analysis"]
-    D --> I["Numerical Computing"]
-    F --> J["Deep Learning Models"]
-    
-    style A fill:#3776AB,stroke:#000,stroke-width:2px,color:#fff
-    style B fill:#FF9500,stroke:#000,stroke-width:2px,color:#fff
-    style G fill:#4CAF50,stroke:#000,stroke-width:2px,color:#fff
-    style H fill:#2196F3,stroke:#000,stroke-width:2px,color:#fff
-    style J fill:#9C27B0,stroke:#000,stroke-width:2px,color:#fff
-```
-
----
-
-## ✨ Key Features
-
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Real-time Processing** | Live camera feed processing | ✅ |
-| **Object Detection** | YOLO, SSD models support | ✅ |
-| **Face Recognition** | Haar Cascade + Deep Learning | ✅ |
-| **Video Analysis** | Frame-by-frame processing | ✅ |
-| **Performance Metrics** | FPS, accuracy calculations | ✅ |
-| **Easy Integration** | Well-documented APIs | ✅ |
-| **Batch Processing** | Multiple images/videos | ✅ |
-| **GPU Support** | CUDA acceleration ready | 🔄 |
+- **Python 3.9+** - Core programming language
+- **OpenCV 4.8** - Computer vision library
+- **TensorFlow/Keras** - Deep learning framework
+- **PyTorch** - ML framework for some projects
+- **MediaPipe** - Hand and pose detection
+- **NumPy** - Numerical computing
+- **Scikit-image** - Image processing
+- **Matplotlib** - Visualization
 
 ---
 
@@ -266,102 +347,30 @@ graph LR
 
 ```
 Open-CV-Projects/
-├── 📁 projects/
-│   ├── object_detection/
-│   │   ├── detector.py
-│   │   ├── models/
-│   │   └── utils.py
-│   ├── face_recognition/
-│   │   ├── recognizer.py
-│   │   └── cascades/
-│   ├── video_analysis/
-│   │   └── analyzer.py
-│   └── document_scanner/
-│       └── scanner.py
-├── 📁 notebooks/
-│   ├── object_detection_demo.ipynb
-│   ├── face_recognition_demo.ipynb
-│   └── video_analysis_demo.ipynb
-├── 📁 data/
-│   ├── sample_images/
-│   └── sample_videos/
-├── 📁 tests/
-│   └── test_projects.py
-├── requirements.txt
+├── Project 1-- Face Detection + Rea.../
+├── Project 2-- Face Mask Detection/
+├── Project 3-- AI Virtual Mouse/
+├── Project 4-- Face Recognition Att.../
+├── Project 5-- Invisible UI Controller/
+├── Project 6-- Driver Drowsiness & .../
+├── Project 7--Object_Detection_YO.../
+├── Project 8-- Air Drawing App/
+├── Project 9-- Motion-Based Light .../
+├── Project 10-- Gesture-Based Man.../
+├── Project 11-- Handwritten Digit.../
+├── Project 12--AR Face Filters/
+├── Project 13-- Emotion-Based Col.../
+├── Project 14-- Creative Computer V.../
+├── Project 15-- Gesture-Controlled.../
+├── Project 16-- AR Try-On System/
+├── Project 17-- AI Sign Language Tr.../
+├── Project 18-- Real-Time Backgrou.../
+├── Project 19-- Motion-Driven Gen.../
+├── Project 20-- AI Attention & Focu.../
+├── Project 21-- Hand-Controlled 3.../
 ├── README.md
 └── LICENSE
 ```
-
----
-
-## 🔄 Project Workflow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Input as Input Module
-    participant Processor as Processing Engine
-    participant Models as ML Models
-    participant Output as Output Handler
-    
-    User->>Input: Provide Image/Video
-    activate Input
-    Input->>Input: Validate & Load
-    Input->>Processor: Send Data
-    deactivate Input
-    
-    activate Processor
-    Processor->>Processor: Preprocess
-    Processor->>Models: Extract Features
-    deactivate Processor
-    
-    activate Models
-    Models->>Models: Run Inference
-    Models->>Output: Return Results
-    deactivate Models
-    
-    activate Output
-    Output->>Output: Annotate & Format
-    Output->>User: Display/Save Results
-    deactivate Output
-```
-
----
-
-## 🚀 Advanced Features
-
-### GPU Acceleration
-Enable CUDA for faster processing:
-```python
-import cv2
-print(cv2.getBuildInformation())  # Check GPU support
-```
-
-### Batch Processing
-```python
-from open_cv_projects import BatchProcessor
-
-processor = BatchProcessor()
-processor.process_directory('path/to/images')
-```
-
-### Performance Monitoring
-```python
-from open_cv_projects import PerformanceMonitor
-
-monitor = PerformanceMonitor()
-monitor.track_fps()
-```
-
----
-
-## 📈 Performance Metrics
-
-| Project | FPS | Accuracy | Latency |
-|---------|-----|----------|----------|
-| Object Detection | 30+ | 95%+ | <50ms |
-| Face Detection | 60+ | 99%+ | <20ms |
-| Video Analysis | 24+ | 92%+ | <100ms |
 
 ---
 
@@ -374,21 +383,6 @@ Contributions are welcome! Please follow these steps:
 3. Commit changes (`git commit -m 'Add amazing feature'`)
 4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-### Development Setup
-```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-pytest tests/
-
-# Format code
-black .
-
-# Lint code
-pylint projects/
-```
 
 ---
 
@@ -407,27 +401,9 @@ This project is licensed under the **MIT License** - see [LICENSE](LICENSE) file
 
 ---
 
-## 🎓 Learning Resources
-
-- [OpenCV Documentation](https://docs.opencv.org/)
-- [Python Computer Vision](https://www.pyimagesearch.com/)
-- [Deep Learning](https://www.deeplearningbook.org/)
-- [YOLO Object Detection](https://docs.ultralytics.com/)
-
----
-
-## ⭐ Show Your Support
+## 🌟 Show Your Support
 
 If this repository helped you, please give it a ⭐ and share with others!
-
----
-
-## 📞 Support & Contact
-
-For issues, questions, or suggestions:
-- Open an [Issue](https://github.com/HarshChoudhary2003/Open-CV-Projects/issues)
-- Contact via [LinkedIn](https://linkedin.com/in/harshchoudhary2003)
-- Email: hc504360@gmail.com
 
 ---
 
