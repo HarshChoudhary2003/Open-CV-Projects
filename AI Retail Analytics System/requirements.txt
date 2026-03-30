@@ -1,0 +1,17 @@
+# Core CV & ML
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Tracking (optional — falls back to centroid tracker if unavailable)
+# sort-tracker>=0.2.0
+
+# Dashboard & Visualization
+streamlit>=1.32.0
+plotly>=5.18.0
+
+# Data
+# sqlite3 is built-in Python — no install needed
+
+# Utilities
+Pillow>=10.0.0
