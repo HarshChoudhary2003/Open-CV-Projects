@@ -1,0 +1,4 @@
+cameras:
+  - id: cam1
+    url: "0" # Local webcam for testing
+    location: "Main Entrance"

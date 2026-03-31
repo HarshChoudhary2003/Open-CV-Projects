@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+streamlit
+pandas
+requests
+ultralytics
+deep-sort-realtime
+pyyaml
+torch
+torchvision
+numpy
+opencv-python
+Pillow
