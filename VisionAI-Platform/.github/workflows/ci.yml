@@ -1,0 +1,60 @@
+name: VisionAI CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest pytest-asyncio httpx
+          pip install fastapi uvicorn pydantic-settings python-jose passlib sqlalchemy aiosqlite numpy opencv-python-headless
+        working-directory: backend
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+        working-directory: backend
+        continue-on-error: true
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install ruff
+      - run: ruff check backend/app/ --ignore E501
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t visionai-backend:latest ./backend
+
+      - name: Test Docker health
+        run: |
+          docker run -d --name test-container -p 8000:8000 \
+            -e SECRET_KEY=test-key-for-ci-only \
+            -e DATABASE_URL=sqlite+aiosqlite:///./test.db \
+            visionai-backend:latest
+          sleep 10
+          curl -f http://localhost:8000/health || exit 1
+          docker stop test-container

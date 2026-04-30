@@ -1,0 +1,42 @@
+# VisionAI Platform — Gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+env/
+
+# Environment (secrets)
+backend/.env
+
+# Database
+*.db
+*.sqlite3
+
+# Model weights (large binaries — download separately)
+backend/weights/*.pt
+backend/weights/*.onnx
+
+# AI output dirs
+snapshots/
+logs/
+reports/
+
+# Face DB (may contain PII)
+backend/face_db.json
+
+# Node
+node_modules/
+dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
