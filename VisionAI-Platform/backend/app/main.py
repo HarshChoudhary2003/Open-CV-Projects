@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.api import auth, cameras, analytics, alerts, faces, reports, websocket
+from app.api import cameras, analytics, alerts, faces, reports, websocket
 
 logging.basicConfig(level=logging.INFO if not settings.DEBUG else logging.DEBUG)
 logger = logging.getLogger("visionai")
@@ -61,7 +61,6 @@ app.add_middleware(
 # ── Routers ───────────────────────────────────────────────────────────────────
 PREFIX = settings.API_PREFIX
 
-app.include_router(auth.router,       prefix=PREFIX, tags=["Authentication"])
 app.include_router(cameras.router,    prefix=PREFIX, tags=["Cameras"])
 app.include_router(analytics.router,  prefix=PREFIX, tags=["Analytics"])
 app.include_router(alerts.router,     prefix=PREFIX, tags=["Alerts"])
