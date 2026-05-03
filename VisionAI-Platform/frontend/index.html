@@ -3,33 +3,37 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>VisionAI Platform | Futuristic AI Vision System</title>
-  <meta name="description" content="Real-time AI computer vision platform with object detection, face recognition, emotion analysis and anomaly detection."/>
+  <title>VisionAI v2.0 | Multimodal Vision AI Agent</title>
+  <meta name="description" content="Production-grade Multimodal Vision AI Agent — real-time object detection, face recognition, zone intrusion, predictive AI, and AI Copilot."/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <!-- Login Screen -->
+
+  <!-- ══════════════════════════════ LOGIN ══════════════════════════════ -->
   <div id="login-screen" class="login-screen">
-    <div class="login-bg-grid"></div>
+    <div class="login-particles" id="login-particles"></div>
     <div class="login-card glass-card">
       <div class="login-logo">
-        <div class="hex-icon">⬡</div>
-        <h1>VISION<span class="accent">AI</span></h1>
-        <p class="login-subtitle">NEURAL SURVEILLANCE PLATFORM v1.0</p>
+        <div class="hex-ring">
+          <div class="hex-inner">⬡</div>
+        </div>
+        <h1 class="logo-title">VISION<span class="accent">AI</span></h1>
+        <p class="login-subtitle">MULTIMODAL VISION AI AGENT v2.0</p>
+        <div class="login-tagline">SEE · UNDERSTAND · ACT</div>
       </div>
       <div class="login-form">
         <div class="form-group">
           <label>OPERATOR ID</label>
-          <input type="text" id="username" value="admin" placeholder="Enter username"/>
+          <input type="text" id="username" value="admin" placeholder="Enter username" autocomplete="username"/>
         </div>
         <div class="form-group">
           <label>ACCESS CODE</label>
-          <input type="password" id="password" value="visionai2024" placeholder="Enter password"/>
+          <input type="password" id="password" value="visionai2024" placeholder="Enter password" autocomplete="current-password"/>
         </div>
-        <button class="btn-primary" onclick="login()">
-          <span>INITIALIZE SYSTEM</span>
+        <button class="btn-primary" id="login-btn" onclick="login()">
+          <span class="btn-text">INITIALIZE SYSTEM</span>
           <div class="btn-scanner"></div>
         </button>
         <p id="login-error" class="error-msg"></p>
@@ -37,31 +41,38 @@
     </div>
   </div>
 
-  <!-- Main Dashboard -->
+  <!-- ══════════════════════════ DASHBOARD ══════════════════════════════ -->
   <div id="dashboard" class="dashboard hidden">
 
     <!-- Top Navigation Bar -->
-    <nav class="topbar">
+    <nav class="topbar" id="topbar">
       <div class="topbar-left">
         <div class="logo-mark">⬡</div>
         <span class="logo-text">VISION<span class="accent">AI</span></span>
-        <div class="status-dot online"></div>
-        <span class="status-text" id="sys-status">SYSTEM ONLINE</span>
+        <div class="version-badge">v2.0</div>
+        <div class="status-indicator">
+          <div class="status-dot online" id="status-dot"></div>
+          <span class="status-text" id="sys-status">SYSTEM ONLINE</span>
+        </div>
       </div>
       <div class="topbar-center">
         <div class="time-display" id="clock"></div>
         <div class="fps-badge" id="fps-badge">-- FPS</div>
+        <div class="threat-quick" id="threat-quick">SECURE</div>
       </div>
       <div class="topbar-right">
-        <button class="nav-btn" onclick="showSection('feeds')">📹 FEEDS</button>
-        <button class="nav-btn" onclick="showSection('analytics')">📊 ANALYTICS</button>
-        <button class="nav-btn" onclick="showSection('alerts')">🚨 ALERTS</button>
-        <button class="nav-btn" onclick="showSection('faces')">👤 FACES</button>
-        <button class="nav-btn danger" onclick="logout()">⏻ LOGOUT</button>
+        <button class="nav-btn active" id="nav-feeds"    onclick="showSection('feeds')">📹 FEEDS</button>
+        <button class="nav-btn" id="nav-analytics" onclick="showSection('analytics')">📊 ANALYTICS</button>
+        <button class="nav-btn" id="nav-heatmap"   onclick="showSection('heatmap')">🌡 HEATMAP</button>
+        <button class="nav-btn" id="nav-zones"     onclick="showSection('zones')">🗺 ZONES</button>
+        <button class="nav-btn" id="nav-copilot"   onclick="showSection('copilot')">🧠 COPILOT</button>
+        <button class="nav-btn" id="nav-alerts"    onclick="showSection('alerts')">🚨 ALERTS</button>
+        <button class="nav-btn" id="nav-faces"     onclick="showSection('faces')">👤 FACES</button>
+        <button class="nav-btn danger" onclick="logout()">⏻</button>
       </div>
     </nav>
 
-    <!-- Section: Live Feeds -->
+    <!-- ════════════ SECTION: LIVE FEEDS ════════════ -->
     <section id="section-feeds" class="section active">
       <div class="section-header">
         <h2 class="section-title">◈ LIVE SURVEILLANCE FEEDS</h2>
@@ -69,59 +80,79 @@
           <select id="camera-select" class="select-dark">
             <option value="0">CAM-00 (Webcam)</option>
             <option value="1">CAM-01</option>
+            <option value="2">CAM-02</option>
           </select>
+          <label class="toggle-label">
+            <input type="checkbox" id="heatmap-toggle" onchange="toggleHeatmapOverlay()"/>
+            <span class="toggle-slider"></span>
+            HEAT OVERLAY
+          </label>
           <button class="btn-primary" onclick="startCamera()">▶ START FEED</button>
-          <button class="btn-danger" onclick="stopCamera()">■ STOP FEED</button>
+          <button class="btn-danger"  onclick="stopCamera()">■ STOP</button>
+          <button class="btn-secondary" onclick="takeSnapshot()">📸 SNAP</button>
         </div>
       </div>
 
       <div class="feeds-grid">
-        <!-- Main camera view -->
+        <!-- Main Feed -->
         <div class="feed-main glass-card">
           <div class="feed-header">
             <span class="cam-label">◉ CAM-00 PRIMARY</span>
-            <span class="rec-badge">● REC</span>
+            <div class="feed-badges">
+              <span class="rec-badge pulse">● REC</span>
+              <span class="ai-badge">🧠 AI ACTIVE</span>
+            </div>
           </div>
           <div class="video-container" id="video-container">
             <div class="no-feed" id="no-feed">
               <div class="no-feed-icon">📷</div>
               <p>AWAITING FEED INITIALIZATION</p>
-              <p class="sub">Click START FEED to begin</p>
+              <p class="sub">Click ▶ START FEED to begin</p>
             </div>
-            <img id="video-frame" class="hidden" alt="Live Feed"/>
-            <canvas id="overlay-canvas" class="hidden"></canvas>
+            <img id="video-frame" class="hidden" alt="Live Camera Feed"/>
           </div>
-          <!-- Live stats overlay -->
           <div class="feed-stats">
             <div class="stat-chip" id="stat-objects">Objects: <b>0</b></div>
             <div class="stat-chip" id="stat-faces">Faces: <b>0</b></div>
             <div class="stat-chip" id="stat-emotion">Emotion: <b>--</b></div>
             <div class="stat-chip threat" id="stat-threat">Threat: <b>0%</b></div>
+            <div class="stat-chip zone-chip" id="stat-zones">Zones: <b>0</b></div>
           </div>
         </div>
 
-        <!-- Right panel: telemetry -->
+        <!-- Right Telemetry Panel -->
         <div class="telemetry-panel">
-          <!-- Threat meter -->
+
+          <!-- Threat Meter -->
           <div class="glass-card metric-card">
             <div class="metric-title">⚡ THREAT LEVEL</div>
             <div class="threat-meter-wrap">
-              <canvas id="threat-canvas" width="160" height="160"></canvas>
-              <div class="threat-value" id="threat-value">0%</div>
+              <canvas id="threat-canvas" width="150" height="150"></canvas>
+              <div class="threat-overlay">
+                <div class="threat-value" id="threat-value">0%</div>
+                <div class="threat-label" id="threat-label">SECURE</div>
+              </div>
             </div>
-            <div class="threat-label" id="threat-label">SECURE</div>
           </div>
 
-          <!-- Detection counts -->
+          <!-- Detection List -->
           <div class="glass-card metric-card">
             <div class="metric-title">🎯 DETECTIONS</div>
             <div id="detection-list" class="detection-list"></div>
           </div>
 
-          <!-- Active alerts -->
+          <!-- Live Alerts -->
           <div class="glass-card metric-card">
             <div class="metric-title">🚨 LIVE ALERTS</div>
             <div id="live-alerts" class="live-alerts-list"></div>
+          </div>
+
+          <!-- Predictive Events -->
+          <div class="glass-card metric-card">
+            <div class="metric-title">⚡ PREDICTIVE AI</div>
+            <div id="pred-events" class="pred-events-list">
+              <div class="no-pred">No predictions active</div>
+            </div>
           </div>
 
           <!-- Gesture / Pose -->
@@ -132,17 +163,24 @@
               <div class="pose-row"><span>Pose:</span><b id="pose-val">--</b></div>
             </div>
           </div>
+
         </div>
       </div>
 
-      <!-- OCR Text panel -->
-      <div class="glass-card ocr-panel">
-        <div class="metric-title">📝 OCR TEXT EXTRACTION</div>
-        <div id="ocr-results" class="ocr-results">No text detected.</div>
+      <!-- Scene Narrative + OCR Row -->
+      <div class="bottom-panels">
+        <div class="glass-card narrative-card">
+          <div class="metric-title">🧠 SCENE NARRATIVE</div>
+          <div id="scene-narrative" class="narrative-text">Initializing AI scene analysis...</div>
+        </div>
+        <div class="glass-card ocr-panel">
+          <div class="metric-title">📝 OCR TEXT EXTRACTION</div>
+          <div id="ocr-results" class="ocr-results">No text detected.</div>
+        </div>
       </div>
     </section>
 
-    <!-- Section: Analytics -->
+    <!-- ════════════ SECTION: ANALYTICS ════════════ -->
     <section id="section-analytics" class="section">
       <div class="section-header">
         <h2 class="section-title">◈ ANALYTICS DASHBOARD</h2>
@@ -154,51 +192,191 @@
             <option value="168">Last 7 Days</option>
           </select>
           <button class="btn-primary" onclick="loadAnalytics()">↻ REFRESH</button>
-          <button class="btn-secondary" onclick="exportCSV()">⬇ CSV EXPORT</button>
+          <button class="btn-secondary" onclick="exportCSV()">⬇ CSV</button>
           <button class="btn-secondary" onclick="exportPDF()">⬇ PDF REPORT</button>
         </div>
       </div>
-
       <div class="analytics-grid">
         <div class="glass-card chart-card">
           <div class="metric-title">📈 DETECTION TIMELINE</div>
           <canvas id="timeline-chart" height="200"></canvas>
         </div>
         <div class="glass-card chart-card">
-          <div class="metric-title">🏷 OBJECT CLASS BREAKDOWN</div>
+          <div class="metric-title">🏷 OBJECT CLASSES</div>
           <canvas id="class-chart" height="200"></canvas>
-        </div>
-        <div class="glass-card summary-card">
-          <div class="metric-title">📋 SYSTEM SUMMARY</div>
-          <div id="summary-stats" class="summary-stats"></div>
         </div>
         <div class="glass-card chart-card">
           <div class="metric-title">😊 EMOTION DISTRIBUTION</div>
           <canvas id="emotion-chart" height="200"></canvas>
         </div>
+        <div class="glass-card chart-card">
+          <div class="metric-title">⚠ ANOMALY SCORE HISTORY</div>
+          <canvas id="anomaly-chart" height="200"></canvas>
+        </div>
+        <div class="glass-card summary-card col-span-2">
+          <div class="metric-title">📋 SYSTEM SUMMARY</div>
+          <div id="summary-stats" class="summary-stats"></div>
+        </div>
       </div>
     </section>
 
-    <!-- Section: Alerts -->
+    <!-- ════════════ SECTION: HEATMAP ════════════ -->
+    <section id="section-heatmap" class="section">
+      <div class="section-header">
+        <h2 class="section-title">◈ MOVEMENT HEATMAP ANALYTICS</h2>
+        <div class="section-actions">
+          <button class="btn-primary" onclick="refreshHeatmap()">↻ REFRESH</button>
+          <button class="btn-secondary" onclick="resetHeatmap()">🗑 RESET</button>
+        </div>
+      </div>
+      <div class="heatmap-layout">
+        <div class="glass-card heatmap-card">
+          <div class="metric-title">🌡 LIVE DENSITY MAP</div>
+          <div class="heatmap-container" id="heatmap-container">
+            <div class="no-feed" id="no-heatmap">
+              <div class="no-feed-icon">🌡</div>
+              <p>HEATMAP GENERATES AFTER 30s OF ACTIVITY</p>
+            </div>
+            <img id="heatmap-frame" class="hidden" alt="Movement Heatmap"/>
+          </div>
+        </div>
+        <div class="glass-card heatmap-legend">
+          <div class="metric-title">📊 DENSITY LEGEND</div>
+          <div class="legend-bar">
+            <div class="legend-gradient"></div>
+            <div class="legend-labels">
+              <span>LOW</span>
+              <span>MED</span>
+              <span>HIGH</span>
+            </div>
+          </div>
+          <div class="metric-title" style="margin-top:1rem;">📋 STATISTICS</div>
+          <div id="heatmap-stats" class="heatmap-stats">
+            <div class="hstat-row"><span>Total Passes:</span><b id="hstat-passes">0</b></div>
+            <div class="hstat-row"><span>Peak Zone:</span><b id="hstat-peak">--</b></div>
+            <div class="hstat-row"><span>Avg Dwell:</span><b id="hstat-dwell">0s</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════ SECTION: ZONES ════════════ -->
+    <section id="section-zones" class="section">
+      <div class="section-header">
+        <h2 class="section-title">◈ ZONE DETECTION MANAGER</h2>
+      </div>
+      <div class="zones-layout">
+        <div class="glass-card zone-create-card">
+          <div class="metric-title">➕ DEFINE NEW ZONE</div>
+          <div class="form-group">
+            <label>ZONE NAME</label>
+            <input type="text" id="zone-name" placeholder="e.g. Server Room"/>
+          </div>
+          <div class="form-group">
+            <label>ZONE TYPE</label>
+            <select id="zone-type" class="select-dark">
+              <option value="restricted">⛔ Restricted</option>
+              <option value="monitor">👁 Monitor</option>
+              <option value="safe">✅ Safe</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>CAMERA</label>
+            <select id="zone-camera" class="select-dark">
+              <option value="cam0">CAM-00</option>
+              <option value="cam1">CAM-01</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>POLYGON POINTS (x,y per line)</label>
+            <textarea id="zone-polygon" class="poly-input" rows="5"
+              placeholder="100,100&#10;500,100&#10;500,400&#10;100,400"></textarea>
+          </div>
+          <button class="btn-primary" onclick="createZone()">CREATE ZONE</button>
+          <p id="zone-msg" class="info-msg"></p>
+        </div>
+        <div class="glass-card zones-list-card">
+          <div class="metric-title">🗺 ACTIVE ZONES</div>
+          <div id="zones-list" class="zones-grid">
+            <div class="no-zones">No zones configured. Create one to enable intrusion detection.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════ SECTION: AI COPILOT ════════════ -->
+    <section id="section-copilot" class="section">
+      <div class="section-header">
+        <h2 class="section-title">◈ AI COPILOT MODE</h2>
+        <div class="section-actions">
+          <div class="copilot-status" id="copilot-status">
+            <span class="status-dot online"></span> COPILOT READY
+          </div>
+        </div>
+      </div>
+      <div class="copilot-layout">
+        <!-- Chat Interface -->
+        <div class="glass-card copilot-chat">
+          <div class="metric-title">💬 ASK THE AI</div>
+          <div class="chat-messages" id="chat-messages">
+            <div class="chat-msg system">
+              <div class="msg-avatar">🧠</div>
+              <div class="msg-body">
+                <div class="msg-author">VisionAI Copilot</div>
+                <div class="msg-text">System initialized. I can see and analyze your camera feeds in real-time. Ask me anything — <em>"What is happening right now?"</em> or <em>"Is there any threat?"</em></div>
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <input type="text" id="copilot-input" class="chat-input"
+              placeholder="What is happening right now?"
+              onkeydown="if(event.key==='Enter') sendCopilotQuestion()"/>
+            <button class="btn-primary" onclick="sendCopilotQuestion()">ASK ▶</button>
+          </div>
+          <div class="quick-questions">
+            <span class="quick-label">QUICK:</span>
+            <button class="q-chip" onclick="askQuick('What is happening right now?')">What's happening?</button>
+            <button class="q-chip" onclick="askQuick('Is there any threat or danger?')">Any threat?</button>
+            <button class="q-chip" onclick="askQuick('Who is in the scene?')">Who is here?</button>
+            <button class="q-chip" onclick="askQuick('Describe the current activity.')">Describe activity</button>
+          </div>
+        </div>
+
+        <!-- Narrative + Context Panel -->
+        <div class="copilot-side">
+          <div class="glass-card narrative-live">
+            <div class="metric-title">📡 LIVE SCENE CONTEXT</div>
+            <div id="live-narrative" class="live-narrative">Awaiting first frame analysis...</div>
+          </div>
+          <div class="glass-card qa-history-card">
+            <div class="metric-title">📋 Q&A HISTORY</div>
+            <div id="qa-history" class="qa-history"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════════════ SECTION: ALERTS ════════════ -->
     <section id="section-alerts" class="section">
       <div class="section-header">
         <h2 class="section-title">◈ ALERT MANAGEMENT</h2>
         <div class="section-actions">
           <select id="severity-filter" class="select-dark" onchange="loadAlerts()">
             <option value="">All Severities</option>
-            <option value="CRITICAL">Critical</option>
-            <option value="HIGH">High</option>
-            <option value="MEDIUM">Medium</option>
-            <option value="LOW">Low</option>
+            <option value="CRITICAL">🔴 Critical</option>
+            <option value="HIGH">🟠 High</option>
+            <option value="MEDIUM">🟡 Medium</option>
+            <option value="LOW">🟢 Low</option>
           </select>
           <button class="btn-primary" onclick="loadAlerts()">↻ REFRESH</button>
+          <button class="btn-secondary" onclick="acknowledgeAll()">✓ ACK ALL</button>
         </div>
       </div>
       <div id="alerts-table-wrap" class="glass-card table-wrap">
         <table id="alerts-table">
           <thead>
             <tr>
-              <th>TIME</th><th>CAMERA</th><th>TYPE</th>
+              <th>TIME</th><th>CAMERA</th><th>RULE</th>
               <th>SEVERITY</th><th>DESCRIPTION</th><th>ACK</th>
             </tr>
           </thead>
@@ -207,7 +385,7 @@
       </div>
     </section>
 
-    <!-- Section: Face Registry -->
+    <!-- ════════════ SECTION: FACE REGISTRY ════════════ -->
     <section id="section-faces" class="section">
       <div class="section-header">
         <h2 class="section-title">◈ FACE REGISTRY</h2>
@@ -222,16 +400,16 @@
           <div class="form-group">
             <label>ACCESS LEVEL</label>
             <select id="face-access" class="select-dark">
-              <option value="visitor">Visitor</option>
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
+              <option value="visitor">🟡 Visitor</option>
+              <option value="staff">🔵 Staff</option>
+              <option value="admin">🟢 Admin</option>
             </select>
           </div>
           <div class="form-group">
             <label>UPLOAD PHOTO</label>
             <input type="file" id="face-file" accept="image/*" class="file-input"/>
           </div>
-          <button class="btn-primary" onclick="registerFace()">REGISTER</button>
+          <button class="btn-primary" onclick="registerFace()">REGISTER PERSON</button>
           <p id="face-msg" class="info-msg"></p>
         </div>
         <div class="glass-card faces-list-card">
@@ -242,6 +420,9 @@
     </section>
 
   </div><!-- end dashboard -->
+
+  <!-- Alert Toast -->
+  <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>

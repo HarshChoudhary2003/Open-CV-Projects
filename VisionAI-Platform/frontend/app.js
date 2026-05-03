@@ -1,574 +1,599 @@
-/**
- * VisionAI Platform — Frontend Application Logic
- * Handles: Auth, WebSocket streaming, telemetry, charts, alerts, faces
- */
+/* ═══════════════════════════════════════════════
+   VisionAI v2.0 — Frontend Application
+   ═══════════════════════════════════════════════ */
 
-const API = "http://localhost:8000/api/v1";
-const WS_BASE = "ws://localhost:8000";
+const API  = 'http://localhost:8000/api/v1';
+const WS   = 'ws://localhost:8000';
 
-let authToken = localStorage.getItem("vai_token") || null;
-let currentCamera = "cam0";
-let wsStream = null;
-let wsTelemetry = null;
-let timelineChart = null;
-let classChart = null;
-let emotionChart = null;
-let lastTelemetry = null;
+let token        = null;
+let streamWS     = null;
+let telemetryWS  = null;
+let copilotWS    = null;
+let charts       = {};
+let anomalyData  = [];
+let currentCam   = '0';
+let heatmapMode  = false;
 
-// ── Clock ─────────────────────────────────────────────────────
-function updateClock() {
-  const now = new Date();
-  document.getElementById("clock").textContent = now.toLocaleTimeString("en-US", {
-    hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit"
-  });
-}
-setInterval(updateClock, 1000);
-updateClock();
+/* ══ Particles background on login ══ */
+(function initParticles(){
+  const c = document.getElementById('login-particles');
+  if(!c) return;
+  for(let i=0;i<60;i++){
+    const d = document.createElement('div');
+    d.style.cssText=`position:absolute;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;
+      background:rgba(0,255,200,${0.1+Math.random()*0.3});border-radius:50%;
+      left:${Math.random()*100}%;top:${Math.random()*100}%;
+      animation:float ${4+Math.random()*6}s linear ${Math.random()*4}s infinite;`;
+    c.appendChild(d);
+  }
+  const style = document.createElement('style');
+  style.textContent=`@keyframes float{0%{transform:translateY(0) scale(1);opacity:.5}
+    50%{transform:translateY(-30px) scale(1.2);opacity:1}
+    100%{transform:translateY(-60px) scale(0.8);opacity:0}}`;
+  document.head.appendChild(style);
+})();
 
-// ── Auth ──────────────────────────────────────────────────────
-async function login() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
-  const errEl = document.getElementById("login-error");
-  errEl.textContent = "";
+/* ══ Clock ══ */
+setInterval(()=>{
+  const el = document.getElementById('clock');
+  if(el) el.textContent = new Date().toLocaleTimeString('en-GB',{hour12:false});
+},1000);
 
+/* ══ Auth ══ */
+async function login(){
+  const u = document.getElementById('username').value;
+  const p = document.getElementById('password').value;
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true;
+  btn.querySelector('.btn-text').textContent = 'AUTHENTICATING...';
   try {
-    const res = await fetch(`${API}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      errEl.textContent = err.detail || "Login failed";
-      return;
-    }
-
-    const data = await res.json();
-    authToken = data.access_token;
-    localStorage.setItem("vai_token", authToken);
-    showDashboard();
-  } catch (e) {
-    errEl.textContent = "Cannot reach backend. Is the server running?";
+    const fd = new FormData();
+    fd.append('username', u); fd.append('password', p);
+    const r = await fetch(`${API}/auth/token`, {method:'POST', body:fd});
+    if(!r.ok) throw new Error('Invalid credentials');
+    const d = await r.json();
+    token = d.access_token;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    document.getElementById('status-dot').classList.add('online');
+    document.getElementById('sys-status').textContent = 'SYSTEM ONLINE';
+    initDashboard();
+  } catch(e){
+    document.getElementById('login-error').textContent = e.message;
+    btn.disabled = false;
+    btn.querySelector('.btn-text').textContent = 'INITIALIZE SYSTEM';
   }
 }
 
-function logout() {
-  authToken = null;
-  localStorage.removeItem("vai_token");
-  disconnectStreams();
-  document.getElementById("login-screen").classList.remove("hidden");
-  document.getElementById("dashboard").classList.add("hidden");
+function logout(){
+  token = null;
+  stopCamera();
+  if(copilotWS){ copilotWS.close(); copilotWS=null; }
+  document.getElementById('dashboard').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
 }
 
-function showDashboard() {
-  document.getElementById("login-screen").classList.add("hidden");
-  document.getElementById("dashboard").classList.remove("hidden");
-  showSection("feeds");
+function h(){ return { Authorization:`Bearer ${token}` }; }
+
+/* ══ Dashboard Init ══ */
+function initDashboard(){
+  initCharts();
   loadAlerts();
   loadFaces();
+  loadZones();
+  initCopilotWS();
+  loadAnalytics();
+  setInterval(loadAlerts, 15000);
+  setInterval(()=>{ if(document.getElementById('section-analytics').classList.contains('active')) loadAnalytics(); }, 30000);
 }
 
-// Auto-login if token exists
-window.addEventListener("load", () => {
-  if (authToken) {
-    showDashboard();
-  }
-
-  // Listen for enter key on login
-  document.getElementById("password").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") login();
-  });
-});
-
-// ── Section Navigation ────────────────────────────────────────
-function showSection(name) {
-  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-  document.getElementById(`section-${name}`).classList.add("active");
-  if (name === "analytics") loadAnalytics();
-  if (name === "alerts") loadAlerts();
-  if (name === "faces") loadFaces();
+/* ══ Section Navigation ══ */
+function showSection(name){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`)?.classList.add('active');
+  if(name==='analytics') loadAnalytics();
+  if(name==='zones') loadZones();
+  if(name==='heatmap') refreshHeatmap();
 }
 
-// ── Camera Controls ───────────────────────────────────────────
-async function startCamera() {
-  const source = parseInt(document.getElementById("camera-select").value);
-  currentCamera = `cam${source}`;
-
+/* ══ Camera Control ══ */
+async function startCamera(){
+  const src = document.getElementById('camera-select').value;
+  currentCam = `cam${src}`;
   try {
-    const res = await fetch(`${API}/cameras/start`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({
-        camera_id: currentCamera,
-        source: source,
-        config: {
-          enable_detection: true,
-          enable_face: true,
-          enable_emotion: true,
-          enable_pose: true,
-          enable_ocr: false,
-          enable_anomaly: true,
-          enable_agent: true,
-        },
-      }),
+    await fetch(`${API}/cameras/${currentCam}/start`, {
+      method:'POST', headers:{...h(),'Content-Type':'application/json'},
+      body: JSON.stringify({source: parseInt(src), config:{enable_heatmap:true, enable_zones:true, enable_predictive:true}})
     });
+  } catch(e){ console.warn('Start camera:', e); }
 
-    if (!res.ok) {
-      const e = await res.json();
-      alert(e.detail || "Failed to start camera");
-      return;
+  // Video stream WS
+  if(streamWS) streamWS.close();
+  streamWS = new WebSocket(`${WS}/ws/stream/${currentCam}`);
+  streamWS.binaryType = 'blob';
+  streamWS.onopen = ()=>{
+    document.getElementById('no-feed').classList.add('hidden');
+    document.getElementById('video-frame').classList.remove('hidden');
+    document.getElementById('status-dot').classList.add('online');
+  };
+  streamWS.onmessage = e=>{
+    if(e.data instanceof Blob){
+      const url = URL.createObjectURL(e.data);
+      const img = document.getElementById('video-frame');
+      if(img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+      img.src = url;
+    } else {
+      try { updateTelemetry(JSON.parse(e.data)); } catch{}
     }
-
-    document.getElementById("no-feed").classList.add("hidden");
-    document.getElementById("video-frame").classList.remove("hidden");
-    document.getElementById("sys-status").textContent = `CAM ${currentCamera.toUpperCase()} ACTIVE`;
-
-    connectStreams();
-  } catch (e) {
-    alert("Cannot reach backend: " + e.message);
-  }
-}
-
-async function stopCamera() {
-  disconnectStreams();
-  await fetch(`${API}/cameras/${currentCamera}/stop`, {
-    method: "POST", headers: authHeaders(),
-  }).catch(() => {});
-
-  document.getElementById("video-frame").classList.add("hidden");
-  document.getElementById("no-feed").classList.remove("hidden");
-  document.getElementById("sys-status").textContent = "SYSTEM ONLINE";
-}
-
-// ── WebSocket Streams ─────────────────────────────────────────
-function connectStreams() {
-  disconnectStreams();
-
-  // Binary video stream
-  wsStream = new WebSocket(`${WS_BASE}/ws/stream/${currentCamera}`);
-  wsStream.binaryType = "arraybuffer";
-
-  wsStream.onmessage = (evt) => {
-    if (typeof evt.data === "string") {
-      // JSON telemetry mixed in
-      try {
-        const data = JSON.parse(evt.data);
-        if (!data.ping) updateTelemetry(data);
-      } catch {}
-      return;
-    }
-    // Binary JPEG
-    const blob = new Blob([evt.data], { type: "image/jpeg" });
-    const url = URL.createObjectURL(blob);
-    const img = document.getElementById("video-frame");
-    const old = img.src;
-    img.src = url;
-    if (old) URL.revokeObjectURL(old);
+  };
+  streamWS.onclose = ()=>{
+    document.getElementById('no-feed').classList.remove('hidden');
+    document.getElementById('video-frame').classList.add('hidden');
   };
 
-  wsStream.onclose = () => {
-    document.getElementById("fps-badge").textContent = "-- FPS";
-  };
-
-  // Telemetry-only stream
-  wsTelemetry = new WebSocket(`${WS_BASE}/ws/telemetry/${currentCamera}`);
-  wsTelemetry.onmessage = (evt) => {
-    try {
-      const data = JSON.parse(evt.data);
-      if (!data.ping) updateTelemetry(data);
-    } catch {}
-  };
+  // Telemetry WS
+  if(telemetryWS) telemetryWS.close();
+  telemetryWS = new WebSocket(`${WS}/ws/telemetry/${currentCam}`);
+  telemetryWS.onmessage = e=>{ try{ updateTelemetry(JSON.parse(e.data)); }catch{} };
 }
 
-function disconnectStreams() {
-  if (wsStream) { wsStream.close(); wsStream = null; }
-  if (wsTelemetry) { wsTelemetry.close(); wsTelemetry = null; }
+async function stopCamera(){
+  if(streamWS){ streamWS.close(); streamWS=null; }
+  if(telemetryWS){ telemetryWS.close(); telemetryWS=null; }
+  try { await fetch(`${API}/cameras/${currentCam}/stop`, {method:'POST', headers:h()}); } catch{}
 }
 
-// ── Telemetry UI Update ───────────────────────────────────────
-function updateTelemetry(data) {
-  lastTelemetry = data;
+async function takeSnapshot(){
+  try {
+    const r = await fetch(`${API}/cameras/${currentCam}/snapshot`, {method:'POST', headers:h()});
+    const d = await r.json();
+    showToast('SNAPSHOT', `Saved: ${d.path||'snapshot'}`, 'LOW');
+  } catch(e){ showToast('ERROR', 'Snapshot failed', 'HIGH'); }
+}
+
+function toggleHeatmapOverlay(){
+  heatmapMode = document.getElementById('heatmap-toggle').checked;
+}
+
+/* ══ Telemetry Updates ══ */
+function updateTelemetry(data){
+  if(!data || data.ping) return;
 
   // FPS
-  if (data.fps) {
-    document.getElementById("fps-badge").textContent = `${data.fps.toFixed(1)} FPS`;
-  }
+  const fps = data.fps ? data.fps.toFixed(1) : '--';
+  const fpsEl = document.getElementById('fps-badge');
+  if(fpsEl) fpsEl.textContent = `${fps} FPS`;
 
-  // Stat chips
-  const dets = data.detections || [];
-  const faces = data.faces || [];
-  const emotions = data.emotions || [];
-
-  document.getElementById("stat-objects").innerHTML =
-    `Objects: <b>${dets.length}</b>`;
-  document.getElementById("stat-faces").innerHTML =
-    `Faces: <b>${faces.length}</b>`;
-
-  const dominantEmotion = emotions.length > 0 ? emotions[0].emotion : "--";
-  document.getElementById("stat-emotion").innerHTML =
-    `Emotion: <b>${dominantEmotion}</b>`;
-
-  const threat = data.anomaly_score || 0;
-  document.getElementById("stat-threat").innerHTML =
-    `Threat: <b>${(threat * 100).toFixed(0)}%</b>`;
+  // Stats chips
+  setText('stat-objects', `Objects: <b>${(data.detections||[]).length}</b>`);
+  setText('stat-faces',   `Faces: <b>${(data.faces||[]).length}</b>`);
+  const em = data.emotions?.[0]?.emotion || '--';
+  setText('stat-emotion', `Emotion: <b>${em}</b>`);
+  const pct = Math.round((data.anomaly_score||0)*100);
+  setText('stat-threat',  `Threat: <b>${pct}%</b>`);
+  const zi = (data.zone_intrusions||[]).length;
+  setText('stat-zones',   `Zones: <b>${zi}</b>`);
 
   // Threat meter
-  drawThreatMeter(threat);
-  document.getElementById("threat-value").textContent = `${(threat * 100).toFixed(0)}%`;
-  const labels = ["SECURE", "ELEVATED", "HIGH RISK", "CRITICAL"];
-  const labelColors = ["#00e676", "#ffd600", "#ff6d00", "#ff1744"];
-  const li = Math.min(Math.floor(threat * 4), 3);
-  const tl = document.getElementById("threat-label");
-  tl.textContent = labels[li];
-  tl.style.color = labelColors[li];
+  drawThreatMeter(data.anomaly_score||0);
+  const tq = document.getElementById('threat-quick');
+  if(tq){
+    const lvl = pct>75?'CRITICAL':pct>40?'HIGH':'SECURE';
+    tq.textContent = lvl;
+    tq.className = 'threat-quick' + (pct>40?' high':'');
+  }
 
   // Detection list
-  const counts = {};
-  dets.forEach(d => { counts[d.class_name] = (counts[d.class_name] || 0) + 1; });
-  const detList = document.getElementById("detection-list");
-  detList.innerHTML = Object.entries(counts).length
-    ? Object.entries(counts).map(([cls, n]) =>
-        `<div class="det-item"><span>${cls}</span><span class="det-count">${n}</span></div>`
-      ).join("")
-    : '<span style="color:var(--text-dim)">No objects</span>';
+  const detList = document.getElementById('detection-list');
+  if(detList){
+    const counts = {};
+    (data.detections||[]).forEach(d=>counts[d.class_name]=(counts[d.class_name]||0)+1);
+    detList.innerHTML = Object.entries(counts).map(([k,v])=>
+      `<div class="det-item"><span>${k}</span><b>${v}</b></div>`).join('') || '<div class="no-pred">No objects</div>';
+  }
 
-  // Agent alerts
-  const actions = data.agent_actions || [];
-  if (actions.length > 0) {
-    const liveAlerts = document.getElementById("live-alerts");
-    actions.forEach(a => {
-      const sev = a.payload?.severity || "LOW";
-      const div = document.createElement("div");
-      div.className = `alert-item ${sev}`;
-      div.textContent = `[${sev}] ${a.payload?.rule || a.action_type}`;
-      liveAlerts.insertBefore(div, liveAlerts.firstChild);
-      // Limit to 6 items
-      while (liveAlerts.children.length > 6) {
-        liveAlerts.removeChild(liveAlerts.lastChild);
+  // Live alerts from agent actions
+  const liveAlerts = document.getElementById('live-alerts');
+  if(liveAlerts && (data.agent_actions||[]).length){
+    (data.agent_actions).forEach(a=>{
+      if(a.action_type==='ALERT'){
+        const sev = a.payload?.severity||'LOW';
+        const div = document.createElement('div');
+        div.className = `alert-item ${sev}`;
+        div.textContent = `${sev}: ${a.payload?.rule?.replace(/_/g,' ')||'alert'}`;
+        liveAlerts.prepend(div);
+        if(liveAlerts.children.length > 6) liveAlerts.lastChild.remove();
+        showToast(a.payload?.rule||'ALERT', `${sev}: ${a.payload?.context_summary||''}`, sev);
       }
     });
   }
 
-  // Pose / gesture
-  if (data.pose) {
-    document.getElementById("gesture-val").textContent = data.pose.gesture_label || data.pose.gesture || "--";
-    document.getElementById("pose-val").textContent = data.pose.pose_label || "--";
+  // Predictive events
+  const predList = document.getElementById('pred-events');
+  if(predList){
+    const preds = data.predicted_events||[];
+    predList.innerHTML = preds.length
+      ? preds.map(p=>`<div class="pred-item">⚡ ${p.description||p.reasons?.join(', ')||'Suspicious'}</div>`).join('')
+      : '<div class="no-pred">No predictions active</div>';
+  }
+
+  // Pose
+  if(data.pose){
+    setText2('gesture-val', data.pose.gesture||'--');
+    setText2('pose-val',    data.pose.label||'--');
+  }
+
+  // Scene narrative
+  if(data.scene_narrative){
+    const el = document.getElementById('scene-narrative');
+    if(el) el.textContent = data.scene_narrative;
+    const el2 = document.getElementById('live-narrative');
+    if(el2) el2.textContent = data.scene_narrative;
   }
 
   // OCR
-  const ocrTexts = data.ocr_texts || [];
-  document.getElementById("ocr-results").textContent =
-    ocrTexts.length > 0 ? ocrTexts.map(o => o.text).join(" | ") : "No text detected.";
-}
+  if(data.ocr_texts?.length){
+    const ocr = document.getElementById('ocr-results');
+    if(ocr) ocr.textContent = data.ocr_texts.map(o=>o.text).join(' | ');
+  }
 
-// ── Threat Meter (Canvas) ─────────────────────────────────────
-function drawThreatMeter(score) {
-  const canvas = document.getElementById("threat-canvas");
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  const cx = 80, cy = 80, r = 65;
+  // Anomaly chart data
+  anomalyData.push({x: new Date().toLocaleTimeString(), y: Math.round((data.anomaly_score||0)*100)});
+  if(anomalyData.length > 30) anomalyData.shift();
+  if(charts.anomaly){
+    charts.anomaly.data.labels = anomalyData.map(d=>d.x);
+    charts.anomaly.data.datasets[0].data = anomalyData.map(d=>d.y);
+    charts.anomaly.update('none');
+  }
 
-  ctx.clearRect(0, 0, 160, 160);
-
-  // Background arc
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, Math.PI * 0.75, Math.PI * 2.25);
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
-  ctx.lineWidth = 12;
-  ctx.lineCap = "round";
-  ctx.stroke();
-
-  // Filled arc
-  const gradient = ctx.createLinearGradient(0, 0, 160, 0);
-  gradient.addColorStop(0, "#00e676");
-  gradient.addColorStop(0.5, "#ffd600");
-  gradient.addColorStop(1, "#ff1744");
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, Math.PI * 0.75, Math.PI * 0.75 + Math.PI * 1.5 * score);
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 12;
-  ctx.lineCap = "round";
-  ctx.stroke();
-
-  // Tick marks
-  for (let i = 0; i <= 10; i++) {
-    const angle = Math.PI * 0.75 + (Math.PI * 1.5 * i) / 10;
-    const x1 = cx + (r - 16) * Math.cos(angle);
-    const y1 = cy + (r - 16) * Math.sin(angle);
-    const x2 = cx + (r - 8) * Math.cos(angle);
-    const y2 = cy + (r - 8) * Math.sin(angle);
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.strokeStyle = "rgba(255,255,255,0.2)";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
+  // Heatmap frame
+  if(heatmapMode && data.heatmap_jpeg){
+    const img = document.getElementById('video-frame');
+    if(img) img.src = 'data:image/jpeg;base64,' + data.heatmap_jpeg;
   }
 }
 
-// ── Analytics ─────────────────────────────────────────────────
-async function loadAnalytics() {
-  const hours = document.getElementById("hours-select")?.value || 24;
+function setText(id, html){ const e=document.getElementById(id); if(e) e.innerHTML=html; }
+function setText2(id, txt){ const e=document.getElementById(id); if(e) e.textContent=txt; }
 
+/* ══ Threat Meter (Canvas) ══ */
+function drawThreatMeter(score){
+  const canvas = document.getElementById('threat-canvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx=75, cy=75, r=60;
+  ctx.clearRect(0,0,150,150);
+  ctx.beginPath(); ctx.arc(cx,cy,r,0.75*Math.PI,2.25*Math.PI);
+  ctx.strokeStyle='rgba(0,200,160,0.12)'; ctx.lineWidth=10; ctx.lineCap='round'; ctx.stroke();
+  const angle = 0.75*Math.PI + score*1.5*Math.PI;
+  const g = ctx.createLinearGradient(cx-r,cy,cx+r,cy);
+  g.addColorStop(0,'#00ffc8'); g.addColorStop(0.5,'#ff8c00'); g.addColorStop(1,'#ff3a3a');
+  ctx.beginPath(); ctx.arc(cx,cy,r,0.75*Math.PI,angle);
+  ctx.strokeStyle=g; ctx.lineWidth=10; ctx.lineCap='round'; ctx.stroke();
+  // Value text
+  const tv=document.getElementById('threat-value'); if(tv) tv.textContent=Math.round(score*100)+'%';
+  const tl=document.getElementById('threat-label');
+  if(tl) tl.textContent=score>0.75?'CRITICAL':score>0.4?'HIGH':'SECURE';
+}
+
+/* ══ Analytics ══ */
+async function loadAnalytics(){
+  const hrs = document.getElementById('hours-select')?.value || 24;
   try {
-    const [summaryRes, timelineRes] = await Promise.all([
-      fetch(`${API}/analytics/summary?hours=${hours}`, { headers: authHeaders() }),
-      fetch(`${API}/analytics/timeline?hours=${hours}`, { headers: authHeaders() }),
+    const [sumR, tlR, clR, emR] = await Promise.all([
+      fetch(`${API}/analytics/summary?hours=${hrs}`,    {headers:h()}),
+      fetch(`${API}/analytics/timeline?hours=${hrs}`,   {headers:h()}),
+      fetch(`${API}/analytics/classes?hours=${hrs}`,    {headers:h()}),
+      fetch(`${API}/analytics/emotions?hours=${hrs}`,   {headers:h()}),
     ]);
-
-    const summary = await summaryRes.json();
-    const timeline = await timelineRes.json();
-
-    // Summary card
-    const summaryEl = document.getElementById("summary-stats");
-    summaryEl.innerHTML = `
-      <div class="summary-row"><span>Total Detections</span><b>${summary.total_detections}</b></div>
-      <div class="summary-row"><span>Time Period</span><b>${hours}h</b></div>
-      ${Object.entries(summary.by_class || {}).slice(0, 6).map(([k, v]) =>
-        `<div class="summary-row"><span>${k}</span><b>${v}</b></div>`
-      ).join("")}
-    `;
-
-    // Timeline chart
-    const tlData = timeline.timeline || [];
-    const tlLabels = tlData.map(t => new Date(t.timestamp).toLocaleTimeString());
-    const tlValues = tlData.map(t => t.count);
-
-    if (timelineChart) timelineChart.destroy();
-    const tlCtx = document.getElementById("timeline-chart").getContext("2d");
-    timelineChart = new Chart(tlCtx, {
-      type: "line",
-      data: {
-        labels: tlLabels,
-        datasets: [{
-          label: "Detections",
-          data: tlValues,
-          borderColor: "#00e5ff",
-          backgroundColor: "rgba(0,229,255,0.08)",
-          fill: true,
-          tension: 0.4,
-          pointRadius: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: "#546e7a", maxTicksLimit: 8 }, grid: { color: "rgba(255,255,255,0.04)" } },
-          y: { ticks: { color: "#546e7a" }, grid: { color: "rgba(255,255,255,0.04)" } },
-        },
-      },
-    });
-
-    // Class breakdown chart
-    const classes = Object.keys(summary.by_class || {}).slice(0, 10);
-    const classCounts = classes.map(k => summary.by_class[k]);
-    const colors = classes.map((_, i) =>
-      `hsl(${(i * 36) % 360}, 80%, 60%)`
-    );
-
-    if (classChart) classChart.destroy();
-    const ccCtx = document.getElementById("class-chart").getContext("2d");
-    classChart = new Chart(ccCtx, {
-      type: "doughnut",
-      data: {
-        labels: classes,
-        datasets: [{
-          data: classCounts,
-          backgroundColor: colors,
-          borderColor: "rgba(0,0,0,0.3)",
-          borderWidth: 2,
-        }],
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: "right", labels: { color: "#b0bec5", font: { size: 11 } } },
-        },
-      },
-    });
-
-    // Emotion chart (demo data if no real data)
-    const emotionLabels = ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"];
-    const emotionColors = ["#ff1744","#00c853","#9c27b0","#ffd600","#78909c","#2196f3","#ff6d00"];
-
-    if (emotionChart) emotionChart.destroy();
-    const ecCtx = document.getElementById("emotion-chart").getContext("2d");
-    emotionChart = new Chart(ecCtx, {
-      type: "bar",
-      data: {
-        labels: emotionLabels,
-        datasets: [{
-          label: "Emotion Score",
-          data: emotionLabels.map(() => Math.random() * 0.5),
-          backgroundColor: emotionColors,
-          borderRadius: 4,
-        }],
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { ticks: { color: "#546e7a" }, grid: { color: "rgba(255,255,255,0.04)" } },
-          y: { ticks: { color: "#546e7a" }, max: 1, grid: { color: "rgba(255,255,255,0.04)" } },
-        },
-      },
-    });
-
-  } catch (e) {
-    console.warn("Analytics load failed:", e);
-  }
+    const sum = await sumR.json();
+    const tl  = await tlR.json();
+    const cl  = await clR.json();
+    const em  = await emR.json();
+    renderSummary(sum);
+    updateChart(charts.timeline, tl.labels||[], tl.data||[], 'line');
+    updateChart(charts.classes,  cl.labels||[], cl.data||[],  'doughnut');
+    updateChart(charts.emotions, em.labels||[], em.data||[], 'bar');
+  } catch(e){ console.warn('Analytics:', e); }
 }
 
-// ── Alerts ────────────────────────────────────────────────────
-async function loadAlerts() {
-  const severity = document.getElementById("severity-filter")?.value || "";
-  let url = `${API}/alerts?limit=100`;
-  if (severity) url += `&severity=${severity}`;
-
-  try {
-    const res = await fetch(url, { headers: authHeaders() });
-    if (!res.ok) return;
-    const alerts = await res.json();
-    const tbody = document.getElementById("alerts-tbody");
-    tbody.innerHTML = alerts.map(a => `
-      <tr>
-        <td>${new Date(a.timestamp).toLocaleString()}</td>
-        <td>${a.camera_id}</td>
-        <td><code>${a.alert_type}</code></td>
-        <td><span class="severity-badge ${a.severity}">${a.severity}</span></td>
-        <td>${a.description}</td>
-        <td>
-          ${a.acknowledged
-            ? '<span style="color:var(--accent-green)">✓ ACK</span>'
-            : `<button class="ack-btn" onclick="ackAlert(${a.id})">ACK</button>`
-          }
-        </td>
-      </tr>
-    `).join("") || "<tr><td colspan='6' style='text-align:center;color:var(--text-dim)'>No alerts found</td></tr>";
-  } catch (e) {
-    console.warn("Alerts load failed:", e);
-  }
+function renderSummary(s){
+  const el = document.getElementById('summary-stats');
+  if(!el) return;
+  const items = [
+    {v: s.total_detections||0, l:'DETECTIONS'},
+    {v: s.total_alerts||0,     l:'ALERTS'},
+    {v: s.unique_faces||0,     l:'FACES SEEN'},
+    {v: s.avg_fps?.toFixed(1)||'--', l:'AVG FPS'},
+  ];
+  el.innerHTML = items.map(i=>`
+    <div class="summary-item">
+      <div class="s-val">${i.v}</div>
+      <div class="s-label">${i.l}</div>
+    </div>`).join('');
 }
 
-async function ackAlert(id) {
-  await fetch(`${API}/alerts/${id}/acknowledge`, {
-    method: "PATCH", headers: authHeaders(),
+function updateChart(chart, labels, data, type){
+  if(!chart) return;
+  chart.data.labels = labels;
+  chart.data.datasets[0].data = data;
+  chart.update();
+}
+
+/* ══ Charts Init ══ */
+function initCharts(){
+  const defaults = { responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#6a8898',font:{family:'Share Tech Mono',size:11}}}},
+    scales:{x:{ticks:{color:'#6a8898'},grid:{color:'rgba(0,200,160,0.06)'}},
+            y:{ticks:{color:'#6a8898'},grid:{color:'rgba(0,200,160,0.06)'}}} };
+  const noScales = { responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#6a8898',font:{family:'Share Tech Mono',size:10}}}} };
+
+  charts.timeline = new Chart(document.getElementById('timeline-chart'), {
+    type:'line', options:{...defaults, plugins:{...defaults.plugins}},
+    data:{labels:[],datasets:[{label:'Detections',data:[],
+      borderColor:'#00ffc8',backgroundColor:'rgba(0,255,200,0.08)',tension:.4,fill:true,pointRadius:3}]}
   });
-  loadAlerts();
+  charts.classes = new Chart(document.getElementById('class-chart'), {
+    type:'doughnut', options:noScales,
+    data:{labels:[],datasets:[{data:[],
+      backgroundColor:['#00ffc8','#00b3ff','#c864ff','#ff8c00','#ff3a3a','#ffd000'],
+      borderColor:'rgba(0,0,0,0.3)',borderWidth:2}]}
+  });
+  charts.emotions = new Chart(document.getElementById('emotion-chart'), {
+    type:'bar', options:{...defaults, plugins:{...defaults.plugins}},
+    data:{labels:[],datasets:[{label:'Count',data:[],
+      backgroundColor:'rgba(200,100,255,0.5)',borderColor:'#c864ff',borderWidth:1}]}
+  });
+  charts.anomaly = new Chart(document.getElementById('anomaly-chart'), {
+    type:'line', options:{...defaults, plugins:{...defaults.plugins},
+      scales:{...defaults.scales, y:{...defaults.scales.y, min:0, max:100}}},
+    data:{labels:[],datasets:[{label:'Anomaly %',data:[],
+      borderColor:'#ff3a3a',backgroundColor:'rgba(255,58,58,0.08)',tension:.4,fill:true,pointRadius:2}]}
+  });
 }
 
-// ── Faces ─────────────────────────────────────────────────────
-async function loadFaces() {
-  try {
-    const res = await fetch(`${API}/faces`, { headers: authHeaders() });
-    if (!res.ok) return;
-    const faces = await res.json();
-    const grid = document.getElementById("faces-list");
-    grid.innerHTML = faces.length
-      ? faces.map(f => `
-          <div class="face-card">
-            <div class="face-avatar">👤</div>
-            <div class="face-name">${f.name}</div>
-            <div class="face-access">${f.access_level.toUpperCase()}</div>
-            <button onclick="deleteFace('${f.person_id}')"
-              style="margin-top:8px;font-size:0.65rem;background:transparent;border:1px solid var(--accent-red);
-                     color:var(--accent-red);padding:2px 8px;border-radius:4px;cursor:pointer;">
-              DELETE
-            </button>
-          </div>
-        `).join("")
-      : "<p style='color:var(--text-dim);font-family:var(--font-mono);font-size:0.8rem;'>No faces registered.</p>";
-  } catch (e) {
-    console.warn("Faces load failed:", e);
-  }
+/* ══ Heatmap ══ */
+async function refreshHeatmap(){
+  const img = document.getElementById('heatmap-frame');
+  if(!img) return;
+  const t = Date.now();
+  img.src = `${API.replace('/api/v1','')}/api/v1/cameras/${currentCam}/heatmap?t=${t}`;
+  img.onload = ()=>{
+    document.getElementById('no-heatmap').classList.add('hidden');
+    img.classList.remove('hidden');
+  };
+  img.onerror = ()=>{ img.classList.add('hidden'); document.getElementById('no-heatmap').classList.remove('hidden'); };
 }
 
-async function registerFace() {
-  const name = document.getElementById("face-name").value.trim();
-  const access = document.getElementById("face-access").value;
-  const file = document.getElementById("face-file").files[0];
-  const msgEl = document.getElementById("face-msg");
-
-  if (!name || !file) {
-    msgEl.textContent = "Please provide a name and photo.";
-    msgEl.style.color = "var(--accent-red)";
-    return;
-  }
-
-  const fd = new FormData();
-  fd.append("name", name);
-  fd.append("access_level", access);
-  fd.append("file", file);
-
+async function resetHeatmap(){
   try {
-    const res = await fetch(`${API}/faces/register`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${authToken}` },
-      body: fd,
-    });
+    await fetch(`${API}/cameras/${currentCam}/heatmap/reset`, {method:'POST', headers:h()});
+    showToast('HEATMAP','Heatmap data cleared','LOW');
+    refreshHeatmap();
+  } catch{}
+}
 
-    if (!res.ok) {
-      const e = await res.json();
-      msgEl.textContent = e.detail || "Registration failed";
-      msgEl.style.color = "var(--accent-red)";
+/* ══ Zone Management ══ */
+async function loadZones(){
+  try {
+    const r = await fetch(`${API}/zones`, {headers:h()});
+    const zones = await r.json();
+    const list = document.getElementById('zones-list');
+    if(!list) return;
+    if(!zones.length){
+      list.innerHTML='<div class="no-zones">No zones configured. Create one to enable intrusion detection.</div>';
       return;
     }
-
-    const data = await res.json();
-    msgEl.textContent = `✓ ${data.name} registered (ID: ${data.person_id.slice(0, 8)}...)`;
-    msgEl.style.color = "var(--accent-green)";
-    loadFaces();
-  } catch (e) {
-    msgEl.textContent = "Server error: " + e.message;
-    msgEl.style.color = "var(--accent-red)";
-  }
+    list.innerHTML = zones.map(z=>`
+      <div class="zone-item ${z.zone_type}">
+        <div class="zone-name">${z.name}</div>
+        <div class="zone-meta">Type: ${z.zone_type} | Cam: ${z.camera_id}</div>
+        <div class="zone-meta">Points: ${z.polygon.length}</div>
+        <button class="ack-btn" onclick="deleteZone('${z.zone_id}')">🗑 Delete</button>
+      </div>`).join('');
+  } catch(e){ console.warn('Zones:', e); }
 }
 
-async function deleteFace(personId) {
-  if (!confirm("Delete this person from the registry?")) return;
-  await fetch(`${API}/faces/${personId}`, {
-    method: "DELETE", headers: authHeaders(),
-  });
-  loadFaces();
-}
-
-// ── Reports ───────────────────────────────────────────────────
-function exportCSV() {
-  const hours = document.getElementById("hours-select")?.value || 24;
-  const url = `${API}/reports/csv/detections?hours=${hours}`;
-  downloadWithAuth(url, `detections_${hours}h.csv`);
-}
-
-function exportPDF() {
-  const hours = document.getElementById("hours-select")?.value || 24;
-  const url = `${API}/reports/pdf/summary?hours=${hours}`;
-  downloadWithAuth(url, `visionai_report_${hours}h.pdf`);
-}
-
-async function downloadWithAuth(url, filename) {
+async function createZone(){
+  const name = document.getElementById('zone-name').value.trim();
+  const type = document.getElementById('zone-type').value;
+  const cam  = document.getElementById('zone-camera').value;
+  const raw  = document.getElementById('zone-polygon').value.trim();
+  if(!name||!raw){ showMsg('zone-msg','Fill all fields','error'); return; }
+  let polygon;
   try {
-    const res = await fetch(url, { headers: authHeaders() });
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-  } catch (e) {
-    alert("Download failed: " + e.message);
+    polygon = raw.split('\n').map(line=>{
+      const [x,y] = line.split(',').map(Number);
+      return [x,y];
+    });
+  } catch{ showMsg('zone-msg','Invalid polygon format','error'); return; }
+  try {
+    await fetch(`${API}/zones`, {method:'POST', headers:{...h(),'Content-Type':'application/json'},
+      body: JSON.stringify({name, polygon, zone_type:type, camera_id:cam, color:[0,0,255]})});
+    showMsg('zone-msg','Zone created!','ok');
+    loadZones();
+  } catch(e){ showMsg('zone-msg','Error: '+e.message,'error'); }
+}
+
+async function deleteZone(id){
+  try {
+    await fetch(`${API}/zones/${id}`, {method:'DELETE', headers:h()});
+    loadZones();
+  } catch{}
+}
+
+/* ══ AI Copilot ══ */
+function initCopilotWS(){
+  copilotWS = new WebSocket(`${WS}/ws/copilot`);
+  copilotWS.onmessage = e=>{
+    try {
+      const d = JSON.parse(e.data);
+      if(d.answer) addChatMessage('assistant', d.answer);
+      if(d.narrative){
+        const el = document.getElementById('live-narrative');
+        if(el) el.textContent = d.narrative;
+      }
+      if(d.history) renderQAHistory(d.history);
+      removeChatThinking();
+    } catch{}
+  };
+  copilotWS.onerror = ()=>{ copilotWS=null; };
+}
+
+function sendCopilotQuestion(){
+  const inp = document.getElementById('copilot-input');
+  const q = inp.value.trim();
+  if(!q) return;
+  inp.value = '';
+  addChatMessage('user', q);
+  addChatThinking();
+  if(copilotWS && copilotWS.readyState===WebSocket.OPEN){
+    copilotWS.send(JSON.stringify({question:q}));
+  } else {
+    // REST fallback
+    fetch(`${API}/copilot/ask`, {method:'POST',
+      headers:{...h(),'Content-Type':'application/json'},
+      body: JSON.stringify({question:q})
+    }).then(r=>r.json()).then(d=>{
+      removeChatThinking();
+      addChatMessage('assistant', d.answer);
+      if(d.narrative){ const el=document.getElementById('live-narrative'); if(el) el.textContent=d.narrative; }
+    }).catch(e=>{ removeChatThinking(); addChatMessage('assistant','Error: '+e.message); });
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────
-function authHeaders() {
-  return {
-    Authorization: `Bearer ${authToken}`,
-    "Content-Type": "application/json",
-  };
+function askQuick(q){ document.getElementById('copilot-input').value=q; sendCopilotQuestion(); }
+
+function addChatMessage(role, text){
+  const container = document.getElementById('chat-messages');
+  if(!container) return;
+  const div = document.createElement('div');
+  div.className = `chat-msg ${role==='user'?'user':'system'}`;
+  div.innerHTML = `<div class="msg-avatar">${role==='user'?'👤':'🧠'}</div>
+    <div class="msg-body">
+      <div class="msg-author">${role==='user'?'OPERATOR':'VisionAI Copilot'}</div>
+      <div class="msg-text">${text}</div>
+    </div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
 }
 
-// Draw initial threat meter
-drawThreatMeter(0);
+function addChatThinking(){
+  const container = document.getElementById('chat-messages');
+  if(!container) return;
+  const div = document.createElement('div');
+  div.className = 'chat-msg system'; div.id = 'thinking-msg';
+  div.innerHTML = `<div class="msg-avatar">🧠</div>
+    <div class="msg-body"><div class="msg-text thinking">Analyzing scene...</div></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+function removeChatThinking(){ document.getElementById('thinking-msg')?.remove(); }
+
+function renderQAHistory(history){
+  const el = document.getElementById('qa-history');
+  if(!el) return;
+  el.innerHTML = history.slice(-10).reverse().map(h=>`
+    <div class="qa-item">
+      <div class="qa-q">Q: ${h.question}</div>
+      <div class="qa-a">A: ${h.answer}</div>
+    </div>`).join('');
+}
+
+/* ══ Alerts ══ */
+async function loadAlerts(){
+  const sev = document.getElementById('severity-filter')?.value||'';
+  try {
+    const url = `${API}/alerts?limit=50${sev?'&severity='+sev:''}`;
+    const r = await fetch(url, {headers:h()});
+    const d = await r.json();
+    const tbody = document.getElementById('alerts-tbody');
+    if(!tbody) return;
+    tbody.innerHTML = (d.items||d||[]).map(a=>`
+      <tr>
+        <td>${new Date(a.created_at*1000||a.timestamp*1000).toLocaleTimeString()}</td>
+        <td>${a.camera_id||'--'}</td>
+        <td>${(a.alert_type||a.rule||'--').replace(/_/g,' ')}</td>
+        <td><span class="badge badge-${a.severity}">${a.severity}</span></td>
+        <td>${a.description||a.context_summary||'--'}</td>
+        <td>${a.acknowledged?'✓':`<button class="ack-btn" onclick="ackAlert('${a.id}')">ACK</button>`}</td>
+      </tr>`).join('');
+  } catch(e){ console.warn('Alerts:', e); }
+}
+
+async function ackAlert(id){
+  try { await fetch(`${API}/alerts/${id}/acknowledge`, {method:'POST', headers:h()}); loadAlerts(); } catch{}
+}
+
+async function acknowledgeAll(){
+  try { await fetch(`${API}/alerts/acknowledge-all`, {method:'POST', headers:h()}); loadAlerts(); } catch{}
+}
+
+/* ══ Faces ══ */
+async function loadFaces(){
+  try {
+    const r = await fetch(`${API}/faces`, {headers:h()});
+    const faces = await r.json();
+    const el = document.getElementById('faces-list');
+    if(!el) return;
+    el.innerHTML = (faces.items||faces||[]).map(f=>`
+      <div class="face-item">
+        <div class="face-avatar">👤</div>
+        <div class="face-name">${f.name}</div>
+        <div class="face-access">${f.access_level||'visitor'}</div>
+        <button class="face-del" onclick="deleteFace('${f.person_id}')">🗑 Remove</button>
+      </div>`).join('');
+  } catch{}
+}
+
+async function registerFace(){
+  const name   = document.getElementById('face-name').value.trim();
+  const access = document.getElementById('face-access').value;
+  const file   = document.getElementById('face-file').files[0];
+  if(!name||!file){ showMsg('face-msg','Name and photo required','error'); return; }
+  const fd = new FormData();
+  fd.append('name', name); fd.append('access_level', access); fd.append('file', file);
+  try {
+    const r = await fetch(`${API}/faces/register`, {method:'POST', headers:h(), body:fd});
+    if(!r.ok) throw new Error('Registration failed');
+    showMsg('face-msg','Registered successfully!','ok');
+    loadFaces();
+  } catch(e){ showMsg('face-msg',e.message,'error'); }
+}
+
+async function deleteFace(id){
+  try { await fetch(`${API}/faces/${id}`, {method:'DELETE', headers:h()}); loadFaces(); } catch{}
+}
+
+/* ══ Reports ══ */
+async function exportCSV(){
+  const hrs = document.getElementById('hours-select')?.value||24;
+  window.open(`${API}/reports/csv?hours=${hrs}&token=${token}`);
+}
+async function exportPDF(){
+  const hrs = document.getElementById('hours-select')?.value||24;
+  window.open(`${API}/reports/pdf?hours=${hrs}&token=${token}`);
+}
+
+/* ══ Toast Notifications ══ */
+function showToast(title, msg, severity='LOW'){
+  const container = document.getElementById('toast-container');
+  if(!container) return;
+  const t = document.createElement('div');
+  t.className = `toast ${severity}`;
+  t.innerHTML = `<div class="toast-title">${severity} | ${title.toUpperCase().replace(/_/g,' ')}</div>${msg}`;
+  container.appendChild(t);
+  setTimeout(()=>{ t.style.animation='fade-out .4s ease forwards'; setTimeout(()=>t.remove(),400); }, 4000);
+}
+
+/* ══ Helpers ══ */
+function showMsg(id, txt, type){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = txt;
+  el.style.color = type==='error'?'var(--danger)':'var(--accent)';
+}

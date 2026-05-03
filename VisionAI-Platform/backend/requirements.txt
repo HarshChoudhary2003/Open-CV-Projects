@@ -1,5 +1,6 @@
 # ═══════════════════════════════════════════════════════════════════
-# VisionAI Platform — Requirements
+# VisionAI Platform v2.0 — Requirements
+# Multimodal Vision AI Agent
 # ═══════════════════════════════════════════════════════════════════
 
 # ── Core API ─────────────────────────────────────────────────────
@@ -25,7 +26,7 @@ ultralytics==8.2.11          # Includes YOLOv8 + ByteTrack
 # torch==2.3.0               # Installed separately for GPU
 # torchvision==0.18.0
 
-# ── MediaPipe ────────────────────────────────────────────────────
+# ── MediaPipe (Pose + Gesture) ────────────────────────────────────
 mediapipe==0.10.14
 
 # ── Face Recognition ─────────────────────────────────────────────
@@ -43,11 +44,16 @@ tensorflow==2.16.1           # FER dependency (or use tf-cpu)
 easyocr==1.7.1
 # pytesseract==0.3.10        # Alternative: requires Tesseract binary
 
+# ── Text-to-Speech (Audio Alerts) ────────────────────────────────
+pyttsx3==2.90                # Offline TTS (primary)
+# gTTS==2.5.1                # Online TTS (alternative)
+# playsound==1.3.0           # Required if using gTTS
+
 # ── Reporting ────────────────────────────────────────────────────
 reportlab==4.1.0
 
-# ── Optional LLM ─────────────────────────────────────────────────
-# openai==1.30.1
+# ── Optional LLM (AI Copilot + Agent Reasoning) ──────────────────
+# openai==1.30.1             # Uncomment for GPT-4o Copilot
 httpx==0.27.0
 
 # ── Utilities ────────────────────────────────────────────────────
